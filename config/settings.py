@@ -172,12 +172,20 @@ STORAGES = {
 }
 
 CORS_ALLOWED_ORIGINS = [
-    origin.strip()
+    origin.strip().rstrip('/')
     for origin in os.getenv(
         'CORS_ALLOWED_ORIGINS',
-        'http://localhost:3000,http://localhost:5173',
+        'http://localhost:3000,http://localhost:5173,https://ecommercevite.netlify.app',
     ).split(',')
     if origin.strip()
+]
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    regex.strip()
+    for regex in os.getenv(
+        'CORS_ALLOWED_ORIGIN_REGEXES',
+        r'^https://.*\.netlify\.app$',
+    ).split(',')
+    if regex.strip()
 ]
 CORS_ALLOW_CREDENTIALS = True
 
