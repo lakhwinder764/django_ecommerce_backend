@@ -6,7 +6,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .cart_utils import get_or_create_cart
+from .cart_utils import get_or_create_cart, sync_items_to_cart
 from .models import Order, OrderItem, Product
 from .order_serializers import CheckoutSerializer, OrderSerializer
 from .order_email import send_order_confirmation_email
@@ -23,10 +23,24 @@ def checkout(request):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     cart = get_or_create_cart(request)
+
+    items_data = serializer.validated_data.pop('items', None)
+    if items_data:
+        sync_items_to_cart(cart, items_data)
+
     cart_items = list(cart.items.select_related('product').all())
 
     if not cart_items:
-        return Response({'error': 'Your cart is empty.'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {
+                'error': 'Your cart is empty.',
+                'detail': (
+                    'Add items via POST /api/cart/add/ while logged in, '
+                    'or include an items array in the checkout request.'
+                ),
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     for item in cart_items:
         if item.quantity > item.product.stock:

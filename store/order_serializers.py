@@ -41,6 +41,12 @@ class OrderSerializer(serializers.ModelSerializer):
         return sum(item.quantity for item in obj.items.all())
 
 
+class CheckoutItemSerializer(serializers.Serializer):
+    product_id = serializers.IntegerField()
+    quantity = serializers.IntegerField(min_value=1)
+    color = serializers.CharField(required=False, allow_blank=True, default='')
+
+
 class CheckoutSerializer(serializers.Serializer):
     full_name = serializers.CharField(max_length=200)
     email = serializers.EmailField()
@@ -53,6 +59,7 @@ class CheckoutSerializer(serializers.Serializer):
         choices=['card', 'upi', 'cod'],
         default='card',
     )
+    items = CheckoutItemSerializer(many=True, required=False)
 
     def validate_phone(self, value):
         digits = ''.join(filter(str.isdigit, value))

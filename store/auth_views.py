@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from .auth_serializers import RegisterSerializer, UserSerializer
+from .cart_utils import get_session_cart, get_user_cart, merge_session_cart_into_user_cart
 from .jwt_serializers import CustomTokenObtainPairSerializer
 
 
@@ -35,6 +36,15 @@ def me(request):
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.user
+        session_cart = get_session_cart(request)
+        user_cart = get_user_cart(user)
+        merge_session_cart_into_user_cart(session_cart, user_cart)
+        return Response(serializer.validated_data, status=status.HTTP_200_OK)
 
 
 class RefreshTokenView(TokenRefreshView):
