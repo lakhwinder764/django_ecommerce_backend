@@ -11,6 +11,7 @@ env/
 dist/
 build/
 db.sqlite3
+staticfiles/
 *.log
 
 # Node
