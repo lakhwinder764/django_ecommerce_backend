@@ -1,15 +1,13 @@
-import io
 import re
 from pathlib import Path
 
 from django.core.files import File
 from django.core.management.base import BaseCommand
-from PIL import Image, ImageDraw, ImageFont
 
 from store.models import Category, Product
 
 BASE_DIR = Path(__file__).resolve().parents[3]
-MEDIA_DIR = BASE_DIR / 'media' / 'products'
+SEED_IMAGES_DIR = BASE_DIR / 'store' / 'seed_images'
 
 CATEGORIES = [
     ('Living Room', 'living-room'),
@@ -31,7 +29,7 @@ PRODUCTS = [
         'reviews': 18,
         'colors': ['#2d3436', '#ffb900', '#e17055'],
         'description': 'Modern dining table perfect for family gatherings.',
-        'image_color': '#6c5ce7',
+        'image_file': 'plunge-dining-table.jpg',
     },
     {
         'name': 'Uttermost pendant light',
@@ -44,7 +42,7 @@ PRODUCTS = [
         'reviews': 9,
         'colors': ['#ff7675', '#22a6b3', '#192a56'],
         'description': 'Elegant pendant light for ambient living room lighting.',
-        'image_color': '#fdcb6e',
+        'image_file': 'uttermost-pendant-light.jpg',
     },
     {
         'name': 'Accent floor lamp',
@@ -57,7 +55,7 @@ PRODUCTS = [
         'reviews': 14,
         'colors': ['#2d3436', '#ffb900'],
         'description': 'Stylish floor lamp with adjustable brightness.',
-        'image_color': '#00b894',
+        'image_file': 'accent-floor-lamp.jpg',
     },
     {
         'name': 'Minimalist coffee table',
@@ -70,7 +68,7 @@ PRODUCTS = [
         'reviews': 22,
         'colors': ['#2d3436', '#8B4513'],
         'description': 'Compact coffee table with tempered glass top.',
-        'image_color': '#e17055',
+        'image_file': 'minimalist-coffee-table.jpg',
     },
     {
         'name': 'Velvet throw pillow set',
@@ -83,7 +81,7 @@ PRODUCTS = [
         'reviews': 41,
         'colors': ['#6c5ce7', '#fd79a8', '#00cec9'],
         'description': 'Soft velvet cushions in assorted jewel tones.',
-        'image_color': '#a29bfe',
+        'image_file': 'velvet-throw-pillow-set.jpg',
     },
     {
         'name': 'Organic coconut oil',
@@ -96,7 +94,7 @@ PRODUCTS = [
         'reviews': 88,
         'colors': ['#f5e6c8'],
         'description': 'Cold-pressed virgin coconut oil for cooking and skincare.',
-        'image_color': '#ffeaa7',
+        'image_file': 'organic-coconut-oil.jpg',
     },
     {
         'name': 'Stainless steel blender',
@@ -109,7 +107,7 @@ PRODUCTS = [
         'reviews': 27,
         'colors': ['#b2bec3', '#2d3436'],
         'description': 'High-speed blender for smoothies and soups.',
-        'image_color': '#74b9ff',
+        'image_file': 'stainless-steel-blender.jpg',
     },
     {
         'name': 'Non-stick frying pan',
@@ -122,7 +120,7 @@ PRODUCTS = [
         'reviews': 53,
         'colors': ['#2d3436', '#dfe6e9'],
         'description': 'Induction-ready pan with triple-layer non-stick coating.',
-        'image_color': '#fab1a0',
+        'image_file': 'non-stick-frying-pan.jpg',
     },
     {
         'name': 'Electric kettle pro',
@@ -135,7 +133,7 @@ PRODUCTS = [
         'reviews': 36,
         'colors': ['#ffffff', '#2d3436'],
         'description': 'Rapid-boil kettle with auto shut-off and LED indicator.',
-        'image_color': '#55efc4',
+        'image_file': 'electric-kettle-pro.jpg',
     },
     {
         'name': 'Ceramic dinnerware set',
@@ -148,7 +146,7 @@ PRODUCTS = [
         'reviews': 29,
         'colors': ['#ffffff', '#0984e3', '#d63031'],
         'description': '16-piece chip-resistant dinner set for everyday use.',
-        'image_color': '#81ecec',
+        'image_file': 'ceramic-dinnerware-set.jpg',
     },
     {
         'name': 'Wooden study desk',
@@ -161,7 +159,7 @@ PRODUCTS = [
         'reviews': 7,
         'colors': ['#8B4513', '#2d3436'],
         'description': 'Spacious desk with cable management and drawers.',
-        'image_color': '#636e72',
+        'image_file': 'wooden-study-desk.jpg',
     },
     {
         'name': 'Ergonomic office chair',
@@ -174,7 +172,7 @@ PRODUCTS = [
         'reviews': 56,
         'colors': ['#2d3436', '#2f3640'],
         'description': 'Adjustable lumbar support and breathable mesh back.',
-        'image_color': '#2d3436',
+        'image_file': 'ergonomic-office-chair.jpg',
     },
     {
         'name': 'Wireless ergonomic mouse',
@@ -187,7 +185,7 @@ PRODUCTS = [
         'reviews': 112,
         'colors': ['#2d3436', '#ffffff'],
         'description': 'Silent-click mouse with multi-device Bluetooth pairing.',
-        'image_color': '#0984e3',
+        'image_file': 'wireless-ergonomic-mouse.jpg',
     },
     {
         'name': '5-tier bookshelf unit',
@@ -200,7 +198,7 @@ PRODUCTS = [
         'reviews': 33,
         'colors': ['#8B4513', '#2d3436'],
         'description': 'Sturdy engineered-wood shelving for home offices.',
-        'image_color': '#b2bec3',
+        'image_file': '5-tier-bookshelf-unit.jpg',
     },
     {
         'name': 'Queen memory foam mattress',
@@ -213,7 +211,7 @@ PRODUCTS = [
         'reviews': 19,
         'colors': ['#ffffff', '#e8e8e8'],
         'description': 'Pressure-relieving foam with cooling gel layer.',
-        'image_color': '#dfe6e9',
+        'image_file': 'queen-memory-foam-mattress.jpg',
     },
     {
         'name': 'Cotton bedsheet set',
@@ -226,7 +224,7 @@ PRODUCTS = [
         'reviews': 67,
         'colors': ['#ffffff', '#74b9ff', '#fd79a8'],
         'description': '300-thread-count breathable cotton sheets with pillowcases.',
-        'image_color': '#fd79a8',
+        'image_file': 'cotton-bedsheet-set.jpg',
     },
     {
         'name': 'Blackout curtain pair',
@@ -239,7 +237,7 @@ PRODUCTS = [
         'reviews': 45,
         'colors': ['#2d3436', '#636e72', '#0984e3'],
         'description': 'Thermal-insulated curtains that block 99% of sunlight.',
-        'image_color': '#2f3640',
+        'image_file': 'blackout-curtain-pair.jpg',
     },
     {
         'name': 'Aromatherapy diffuser',
@@ -252,7 +250,7 @@ PRODUCTS = [
         'reviews': 94,
         'colors': ['#ffffff', '#a29bfe'],
         'description': 'Ultrasonic diffuser with 7 LED mood-light modes.',
-        'image_color': '#a29bfe',
+        'image_file': 'aromatherapy-diffuser.jpg',
     },
     {
         'name': 'Smart LED bulb pack',
@@ -265,7 +263,7 @@ PRODUCTS = [
         'reviews': 31,
         'colors': ['#ffffff', '#ffb900'],
         'description': 'Wi-Fi enabled bulbs compatible with voice assistants.',
-        'image_color': '#ffeaa7',
+        'image_file': 'smart-led-bulb-pack.jpg',
     },
     {
         'name': 'Air purifier HEPA',
@@ -278,7 +276,7 @@ PRODUCTS = [
         'reviews': 64,
         'colors': ['#ffffff', '#2d3436'],
         'description': 'Captures 99.97% of allergens and pollutants.',
-        'image_color': '#00cec9',
+        'image_file': 'air-purifier-hepa.jpg',
     },
     {
         'name': 'Room humidifier',
@@ -291,7 +289,7 @@ PRODUCTS = [
         'reviews': 38,
         'colors': ['#ffffff', '#74b9ff'],
         'description': 'Ultra-quiet cool-mist humidifier for medium-sized rooms.',
-        'image_color': '#74b9ff',
+        'image_file': 'room-humidifier.jpg',
     },
 ]
 
@@ -302,53 +300,6 @@ def slugify(value):
     return value.strip('-')
 
 
-def generate_product_image(name, color_hex, output_path):
-    width, height = 640, 640
-    image = Image.new('RGB', (width, height), color_hex)
-    draw = ImageDraw.Draw(image)
-
-    accent = '#ffffff' if _is_dark(color_hex) else '#2d3436'
-    draw.rectangle([(40, 40), (width - 40, height - 40)], outline=accent, width=4)
-
-    words = name.split()
-    lines = []
-    current = []
-    for word in words:
-        current.append(word)
-        if len(' '.join(current)) > 16:
-            if len(current) > 1:
-                lines.append(' '.join(current[:-1]))
-                current = [word]
-            else:
-                lines.append(word)
-                current = []
-    if current:
-        lines.append(' '.join(current))
-    lines = lines[:3]
-
-    try:
-        font = ImageFont.truetype('arial.ttf', 36)
-    except OSError:
-        font = ImageFont.load_default()
-
-    y = height // 2 - (len(lines) * 22)
-    for line in lines:
-        bbox = draw.textbbox((0, 0), line, font=font)
-        text_width = bbox[2] - bbox[0]
-        draw.text(((width - text_width) / 2, y), line, fill=accent, font=font)
-        y += 44
-
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    image.save(output_path, format='PNG')
-
-
-def _is_dark(hex_color):
-    hex_color = hex_color.lstrip('#')
-    r, g, b = int(hex_color[0:2], 16), int(hex_color[2:4], 16), int(hex_color[4:6], 16)
-    brightness = (r * 299 + g * 587 + b * 114) / 1000
-    return brightness < 128
-
-
 class Command(BaseCommand):
     help = 'Seed categories and sample products for the ecommerce store'
 
@@ -357,6 +308,11 @@ class Command(BaseCommand):
             '--clear',
             action='store_true',
             help='Delete existing products and categories before seeding',
+        )
+        parser.add_argument(
+            '--skip-images',
+            action='store_true',
+            help='Skip updating product images',
         )
 
     def handle(self, *args, **options):
@@ -371,8 +327,9 @@ class Command(BaseCommand):
             category_map[name] = category
 
         created = 0
+        images_updated = 0
         for data in PRODUCTS:
-            image_color = data.pop('image_color')
+            image_file = data.pop('image_file')
             category_name = data.pop('category')
             category = category_map[category_name]
 
@@ -387,13 +344,21 @@ class Command(BaseCommand):
                 product.category = category
                 product.save()
 
-            image_name = f'{slugify(data["name"])}.png'
-            image_path = MEDIA_DIR / image_name
-            if not image_path.exists():
-                generate_product_image(data['name'], image_color, image_path)
+            if not options['skip_images']:
+                source_path = SEED_IMAGES_DIR / image_file
+                if source_path.exists():
+                    if product.image:
+                        product.image.delete(save=False)
 
-            with image_path.open('rb') as image_file:
-                product.image.save(image_name, File(image_file), save=True)
+                    with source_path.open('rb') as image_file_handle:
+                        product.image.save(image_file, File(image_file_handle), save=True)
+                    images_updated += 1
+                else:
+                    self.stdout.write(
+                        self.style.WARNING(
+                            f'Missing seed image for "{data["name"]}": {source_path}'
+                        )
+                    )
 
             if was_created:
                 created += 1
@@ -402,6 +367,7 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.SUCCESS(
                 f'Seed complete: {Product.objects.count()} products '
-                f'({featured_count} featured), {created} newly created.'
+                f'({featured_count} featured), {created} newly created, '
+                f'{images_updated} images updated.'
             )
         )
