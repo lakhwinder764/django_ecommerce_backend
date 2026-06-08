@@ -1,3 +1,5 @@
+import logging
+
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
@@ -12,6 +14,7 @@ from .order_serializers import CheckoutSerializer, OrderSerializer
 from .order_email import send_order_confirmation_email
 
 SHIPPING_FEE = 5000
+logger = logging.getLogger(__name__)
 
 
 @csrf_exempt
@@ -22,77 +25,84 @@ def checkout(request):
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    cart = get_or_create_cart(request)
+    try:
+        cart = get_or_create_cart(request)
 
-    items_data = serializer.validated_data.pop('items', None)
-    if items_data:
-        sync_items_to_cart(cart, items_data)
+        items_data = serializer.validated_data.pop('items', None)
+        if items_data:
+            sync_items_to_cart(cart, items_data)
 
-    cart_items = list(cart.items.select_related('product').all())
+        cart_items = list(cart.items.select_related('product').all())
 
-    if not cart_items:
-        return Response(
-            {
-                'error': 'Your cart is empty.',
-                'detail': (
-                    'Add items via POST /api/cart/add/ while logged in, '
-                    'or include an items array in the checkout request.'
-                ),
-            },
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-
-    for item in cart_items:
-        if item.quantity > item.product.stock:
+        if not cart_items:
             return Response(
                 {
-                    'error': (
-                        f'Not enough stock for {item.product.name}. '
-                        f'Only {item.product.stock} available.'
-                    )
+                    'error': 'Your cart is empty.',
+                    'detail': (
+                        'Add items via POST /api/cart/add/ while logged in, '
+                        'or include an items array in the checkout request.'
+                    ),
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-    shipping_data = serializer.validated_data
-    subtotal = sum(item.product.price * item.quantity for item in cart_items)
-    total_amount = subtotal + SHIPPING_FEE
-
-    with transaction.atomic():
-        order = Order.objects.create(
-            user=request.user,
-            session_key=cart.session_key,
-            status='confirmed',
-            subtotal=subtotal,
-            shipping_fee=SHIPPING_FEE,
-            total_amount=total_amount,
-            **shipping_data,
-        )
-
         for item in cart_items:
-            OrderItem.objects.create(
-                order=order,
-                product=item.product,
-                quantity=item.quantity,
-                price=item.product.price,
-                color=item.color,
+            if item.quantity > item.product.stock:
+                return Response(
+                    {
+                        'error': (
+                            f'Not enough stock for {item.product.name}. '
+                            f'Only {item.product.stock} available.'
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        shipping_data = serializer.validated_data
+        subtotal = sum(item.product.price * item.quantity for item in cart_items)
+        total_amount = subtotal + SHIPPING_FEE
+
+        with transaction.atomic():
+            order = Order.objects.create(
+                user=request.user,
+                session_key=cart.session_key[:40],
+                status='confirmed',
+                subtotal=subtotal,
+                shipping_fee=SHIPPING_FEE,
+                total_amount=total_amount,
+                **shipping_data,
             )
-            product = Product.objects.select_for_update().get(pk=item.product_id)
-            product.stock = max(product.stock - item.quantity, 0)
-            product.save(update_fields=['stock'])
 
-        cart.items.all().delete()
+            for item in cart_items:
+                OrderItem.objects.create(
+                    order=order,
+                    product=item.product,
+                    quantity=item.quantity,
+                    price=item.product.price,
+                    color=item.color,
+                )
+                product = Product.objects.select_for_update().get(pk=item.product_id)
+                product.stock = max(product.stock - item.quantity, 0)
+                product.save(update_fields=['stock'])
 
-    email_sent = send_order_confirmation_email(order)
+            cart.items.all().delete()
 
-    return Response(
-        {
-            'message': 'Order placed successfully.',
-            'email_sent': email_sent,
-            'order': OrderSerializer(order, context={'request': request}).data,
-        },
-        status=status.HTTP_201_CREATED,
-    )
+        email_sent = send_order_confirmation_email(order)
+
+        return Response(
+            {
+                'message': 'Order placed successfully.',
+                'email_sent': email_sent,
+                'order': OrderSerializer(order, context={'request': request}).data,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+    except Exception:
+        logger.exception('Checkout failed for user %s', request.user.pk)
+        return Response(
+            {'error': 'Checkout failed. Please try again.'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
 
 
 @api_view(['GET'])

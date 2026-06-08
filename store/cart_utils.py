@@ -1,3 +1,5 @@
+from django.db import IntegrityError
+
 from .models import Cart, CartItem
 
 
@@ -20,15 +22,35 @@ def get_user_cart(user):
     cart = Cart.objects.filter(user=user).first()
     if cart:
         return cart
-    return Cart.objects.create(user=user, session_key=f'user-{user.pk}')
+
+    session_key = f'user-{user.pk}'
+    try:
+        cart, created = Cart.objects.get_or_create(
+            session_key=session_key,
+            defaults={'user': user},
+        )
+        if not created and cart.user_id != user.pk:
+            cart.user = user
+            cart.save(update_fields=['user'])
+        return cart
+    except IntegrityError:
+        return Cart.objects.filter(user=user).first()
 
 
 def get_or_create_cart(request):
     user = getattr(request, 'user', None)
     if user and user.is_authenticated:
-        session_cart = get_session_cart(request)
         user_cart = get_user_cart(user)
-        return merge_session_cart_into_user_cart(session_cart, user_cart)
+        session_key = request.session.session_key
+        if session_key:
+            session_cart = Cart.objects.filter(session_key=session_key).first()
+            if (
+                session_cart
+                and session_cart.pk != user_cart.pk
+                and session_cart.items.exists()
+            ):
+                return merge_session_cart_into_user_cart(session_cart, user_cart)
+        return user_cart
     return get_session_cart(request)
 
 

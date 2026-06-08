@@ -12,7 +12,10 @@ def _absolute_url(request, path):
 
 def _product_image_url(request, product):
     if product.image:
-        return _absolute_url(request, product.image.url)
+        try:
+            return _absolute_url(request, product.image.url)
+        except (ValueError, OSError):
+            return ''
     return ''
 
 

@@ -65,7 +65,7 @@ class CheckoutSerializer(serializers.Serializer):
         digits = ''.join(filter(str.isdigit, value))
         if len(digits) < 10:
             raise serializers.ValidationError('Enter a valid phone number.')
-        return value
+        return digits[:15]
 
     def validate_pincode(self, value):
         if not value.isdigit() or len(value) != 6:
